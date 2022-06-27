@@ -25,7 +25,6 @@ var (
 	secretKey                     = ""
 	numberOfTickers               = 20
 	timeOut         time.Duration = 60
-	wg              sync.WaitGroup
 	mutex           sync.Mutex
 )
 
@@ -73,9 +72,7 @@ func main() {
 
 
 	for i := 0; i < numberOfTickers; i++ {
-		wg.Add(1)
 		go func(i int) {
-			defer wg.Done()
 			doneC, _, err := binance.WsAggTradeServe(fullListTickers[i].Symbol, wsAggTradeHandler, errHandler)
 			if err != nil {
 				fmt.Println(err)
@@ -85,14 +82,16 @@ func main() {
 		}(i)
 	}
 
-	for i := 0; ; i++ {
-		time.Sleep(timeOut * time.Second)
-		for key, val := range tickers {
-			fmt.Println(key, val)
+	tt := time.NewTicker(timeOut * time.Second)
+	fmt.Printf("wait %d seconds...\n", timeOut)
+	for range tt.C {
+		mutex.Lock()
+		for key := range tickers {
+			fmt.Println(key, tickers[key])
 			delete(tickers, key)
 		}
+		mutex.Unlock()
 		fmt.Println()
 	}
 
-	wg.Wait()
 }
